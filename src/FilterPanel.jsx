@@ -37,7 +37,7 @@ export default function FilterPanel({
     background: "#fff",
     border: "1px solid #e0e0e0",
     borderRadius: 10,
-    padding: "12px 14px",
+    padding: "24px 26px",//to increse height
     boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
     zIndex: 9999,
   };
