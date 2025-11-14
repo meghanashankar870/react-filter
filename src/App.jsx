@@ -99,9 +99,31 @@ function App() {
           }
 
           if (f.operator === "contains") return cell.includes(val);
-          if (f.operator === "equals") return cell === val;
-          if (f.operator === "startsWith") return cell.startsWith(val);
+          if (f.operator === "does not contains")
+            return !cell.includes(val);
 
+          if (f.operator === "equals") return cell === val;
+          if (f.operator === "does not equal")
+            return cell !== val;
+
+          if (f.operator === "startsWith") return cell.startsWith(val);
+          if (f.operator === "ends with")
+            return cell.endsWith(val);
+
+          if (f.operator === "is empty")
+        return cell.trim() === "";
+
+      if (f.operator === "is not empty")
+        return cell.trim() !== "";
+
+      // ----------------------
+      // MULTIPLE VALUES → “is any of”
+      // value example: "jon, arya, snow"
+      // ----------------------
+      if (f.operator === "is any of") {
+        const list = val.split(",").map((v) => v.trim());
+        return list.includes(cell);
+      }
           return true;
         })
       );

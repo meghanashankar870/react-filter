@@ -68,7 +68,7 @@ export default function FilterPanel({
   };
 
   const closeBtnStyle = {
-    fontSize: 18,
+    fontSize: 25,
     border: "none",
     background: "transparent",
     cursor: "pointer",
