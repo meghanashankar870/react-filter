@@ -8,9 +8,10 @@ export default function FilterPanel({
   onChange,
   activeFilters = []
 }) {
+  // ❗ Render nothing until the user clicks Filter
   if (!anchor) return null;
 
-  // always use one filter row
+  // one filter row
   const [filter, setFilter] = useState(
     activeFilters.length
       ? activeFilters[0]
@@ -19,15 +20,16 @@ export default function FilterPanel({
 
   useEffect(() => {
     onChange([filter]);
-  }, [filter]);
+  }, [filter, onChange]);
 
-  // popup positioning like MUI
+  // popup positioning
   const popupWidth = 520;
   const left = Math.max(
     8,
     Math.min(anchor.left - 60, window.innerWidth - popupWidth - 8)
   );
-  const top = anchor.bottom -80;
+
+  const top = anchor.bottom - 80;
 
   const popupStyle = {
     position: "fixed",
@@ -37,15 +39,15 @@ export default function FilterPanel({
     background: "#fff",
     border: "1px solid #e0e0e0",
     borderRadius: 10,
-    padding: "24px 26px",//to increse height
+    padding: "24px 26px",
     boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
-    zIndex: 9999,
+    zIndex: 9999
   };
 
   const rowStyle = {
     display: "flex",
     alignItems: "center",
-    gap: 12,
+    gap: 12
   };
 
   const selectStyle = {
@@ -70,15 +72,16 @@ export default function FilterPanel({
     border: "none",
     background: "transparent",
     cursor: "pointer",
-    padding: "4px 6px",
+    padding: "4px 6px"
   };
 
   return ReactDOM.createPortal(
     <div style={popupStyle}>
-      {/* ⭐ EXACT MUI-LIKE — ONE SINGLE ROW */}
       <div style={rowStyle}>
-        {/* X Close */}
-        <button style={closeBtnStyle} onClick={onClose}>✕</button>
+        {/* Close icon */}
+        <button style={closeBtnStyle} onClick={onClose}>
+          ✕
+        </button>
 
         {/* Column dropdown */}
         <select
@@ -104,10 +107,16 @@ export default function FilterPanel({
           }
         >
           <option value="contains">contains</option>
+          <option value="does not contains">does not contains</option>
           <option value="equals">equals</option>
+          <option value="does not equal">does not equal</option>
           <option value="startsWith">starts with</option>
+          <option value="ends with">ends with</option>
           <option value="gt">greater than</option>
           <option value="lt">less than</option>
+          <option value="is empty">is empty</option>
+          <option value="is not empty">is not empty</option>
+          <option value="is any of">is any of</option>
         </select>
 
         {/* Value input */}
