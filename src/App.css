@@ -306,3 +306,93 @@ thead th {
   border: 1px solid #ccc;
   border-radius: 6px;
 }
+
+/* Overlay background */
+.manage-columns-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.05);
+  z-index: 5000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Main popup box */
+.manage-columns-box {
+  height:350px;
+  width: 300px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eceaea;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  padding: 16px;
+}
+
+/* Header */
+.mc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.mc-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+/* Search Bar */
+.mc-search {
+  width: 90%;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  outline: none;
+}
+.mc-search:focus {
+  border-color: #1976d2;
+}
+
+/* Column List */
+.mc-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+.mc-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 5px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.mc-item:hover {
+  background: #f5f5f5;
+}
+
+/* Footer */
+.mc-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+}
+.mc-footer-btn {
+  background: none;
+  border: none;
+  color: #1976d2;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mc-reset {
+  background: none;
+  border: none;
+  color: gray;
+  cursor: pointer;
+}

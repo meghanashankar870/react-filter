@@ -249,22 +249,70 @@ function App() {
       />
 
       {manageOpen && (
-        <div className="manage-popup">
-          <h4>Manage Columns</h4>
-          {defaultColumns.map((col) => (
-            <label key={col.key}>
-              <input
-                type="checkbox"
-                checked={!hiddenColumns.includes(col.key)}
-                onChange={() => toggleColumn(col.key)}
-              />
-              {col.title}
-            </label>
-          ))}
-          <br />
-          <button onClick={() => setManageOpen(false)}>Close</button>
-        </div>
-      )}
+  <div className="manage-columns-overlay">
+    <div className="manage-columns-box">
+      
+      {/* Header */}
+      <div className="mc-header">
+        <strong>Manage Columns</strong>
+        <button className="mc-close" onClick={() => setManageOpen(false)}>✕</button>
+      </div>
+
+      {/* Search box */}
+      <input
+        type="text"
+        placeholder="Search columns..."
+        className="mc-search"
+        onChange={(e) => {
+          const v = e.target.value.toLowerCase();
+          document.querySelectorAll(".mc-item").forEach((el) => {
+            const name = el.dataset.label.toLowerCase();
+            el.style.display = name.includes(v) ? "flex" : "none";
+          });
+        }}
+      />
+
+      {/* Column List */}
+      <div className="mc-list">
+        {defaultColumns.map((col) => (
+          <div
+            key={col.key}
+            className="mc-item"
+            data-label={col.title}
+          >
+            <input
+              type="checkbox"
+              checked={!hiddenColumns.includes(col.key)}
+              onChange={() => toggleColumn(col.key)}
+            />
+            <span>{col.title}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer Bottom */}
+      <div className="mc-footer">
+        <button
+          className="mc-footer-btn"
+          onClick={() => setHiddenColumns([])}
+        >
+          Show/Hide All
+        </button>
+
+        <button
+          className="mc-reset"
+          onClick={() => {
+            setHiddenColumns([]);
+            setManageOpen(false);
+          }}
+        >
+          RESET
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
       <div style={{ marginTop: 12 }}>
         <strong>Selected IDs:</strong> {[...selected].join(", ") || "—"}

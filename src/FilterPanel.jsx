@@ -1,100 +1,125 @@
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 
-export default function FilterPanel({ columns = [], onChange, activeFilters = [], anchor, onClose }) {
-  // Do not render if no anchor
+export default function FilterPanel({
+  columns = [],
+  anchor,
+  onClose,
+  onChange,
+  activeFilters = []
+}) {
   if (!anchor) return null;
 
-  const [filters, setFilters] = useState(
-    activeFilters && activeFilters.length ? activeFilters : [{ column: anchor.columnKey || columns[0]?.key, operator: "contains", value: "" }]
+  // always use one filter row
+  const [filter, setFilter] = useState(
+    activeFilters.length
+      ? activeFilters[0]
+      : { column: columns[0]?.key, operator: "contains", value: "" }
   );
 
   useEffect(() => {
-    if (onChange) onChange(filters);
-  }, [filters, onChange]);
+    onChange([filter]);
+  }, [filter]);
 
-  useEffect(() => {
-    if (activeFilters && activeFilters.length) setFilters(activeFilters);
-  }, [activeFilters]);
-
-  const updateFilter = (i, key, val) => {
-    setFilters((prev) => {
-      const copy = [...prev];
-      copy[i] = { ...copy[i], [key]: val };
-      return copy;
-    });
-  };
-
-  const addFilter = () => setFilters((p) => [...p, { column: columns[0]?.key, operator: "contains", value: "" }]);
-  const removeFilter = (i) => setFilters((p) => p.filter((_, idx) => idx !== i));
-
-  const popupWidth = 380;
-  // position calculation — keep inside viewport
-  const rawLeft = Math.max(8, anchor.left - 20);
-  const left = Math.min(rawLeft, window.innerWidth - popupWidth - 8);
-  const top = Math.max(8, anchor.bottom + 8); // anchor.bottom is viewport coordinate
+  // popup positioning like MUI
+  const popupWidth = 520;
+  const left = Math.max(
+    8,
+    Math.min(anchor.left - 60, window.innerWidth - popupWidth - 8)
+  );
+  const top = anchor.bottom -80;
 
   const popupStyle = {
     position: "fixed",
     top,
     left,
     width: popupWidth,
-    zIndex: 9999,
     background: "#fff",
-    borderRadius: 12,
-    border: "1px solid #e6e6e6",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
-    padding: 14,
-    transition: "opacity 120ms ease, transform 120ms ease",
-    transformOrigin: "top left",
+    border: "1px solid #e0e0e0",
+    borderRadius: 10,
+    padding: "12px 14px",
+    boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
+    zIndex: 9999,
   };
 
   const rowStyle = {
     display: "flex",
-    flexWrap: "wrap",
-    gap: 10,
-    background: "#fafafa",
-    padding: 10,
-    borderRadius: 8,
-    border: "1px solid #f0f0f0",
-    marginBottom: 10,
     alignItems: "center",
+    gap: 12,
   };
 
-  const selectStyle = { flex: "1 1 120px", padding: 8, borderRadius: 6, border: "1px solid #ddd" };
-  const inputStyle = { flex: "2 1 150px", padding: 8, borderRadius: 6, border: "1px solid #ddd" };
-  const smallBtn = { padding: "8px 12px", borderRadius: 6, border: "none", cursor: "pointer" };
+  const selectStyle = {
+    padding: "10px",
+    borderRadius: 6,
+    border: "1px solid #ccc",
+    fontSize: 14,
+    flex: 1,
+    background: "#fff"
+  };
+
+  const inputStyle = {
+    padding: "10px",
+    borderRadius: 6,
+    border: "1px solid #ccc",
+    fontSize: 14,
+    flex: 1
+  };
+
+  const closeBtnStyle = {
+    fontSize: 18,
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+    padding: "4px 6px",
+  };
 
   return ReactDOM.createPortal(
-    <div style={popupStyle} role="dialog" aria-label="Column filter">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <strong>Filters</strong>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => { addFilter(); }} style={{ ...smallBtn, background: "#f3f3f3" }}>+ Add</button>
-          <button onClick={() => { setFilters([]); }} style={{ ...smallBtn, background: "#fff", border: "1px solid #eee" }}>Clear</button>
-          <button onClick={onClose} style={{ ...smallBtn, background: "#1976d2", color: "#fff" }}>Apply</button>
-        </div>
+    <div style={popupStyle}>
+      {/* ⭐ EXACT MUI-LIKE — ONE SINGLE ROW */}
+      <div style={rowStyle}>
+        {/* X Close */}
+        <button style={closeBtnStyle} onClick={onClose}>✕</button>
+
+        {/* Column dropdown */}
+        <select
+          style={selectStyle}
+          value={filter.column}
+          onChange={(e) =>
+            setFilter({ ...filter, column: e.target.value })
+          }
+        >
+          {columns.map((c) => (
+            <option key={c.key} value={c.key}>
+              {c.title}
+            </option>
+          ))}
+        </select>
+
+        {/* Operator dropdown */}
+        <select
+          style={selectStyle}
+          value={filter.operator}
+          onChange={(e) =>
+            setFilter({ ...filter, operator: e.target.value })
+          }
+        >
+          <option value="contains">contains</option>
+          <option value="equals">equals</option>
+          <option value="startsWith">starts with</option>
+          <option value="gt">greater than</option>
+          <option value="lt">less than</option>
+        </select>
+
+        {/* Value input */}
+        <input
+          style={inputStyle}
+          placeholder="Filter value"
+          value={filter.value}
+          onChange={(e) =>
+            setFilter({ ...filter, value: e.target.value })
+          }
+        />
       </div>
-
-      {filters.map((f, i) => (
-        <div key={i} style={rowStyle}>
-          <select style={selectStyle} value={f.column} onChange={(e) => updateFilter(i, "column", e.target.value)}>
-            {columns.map((c) => <option key={c.key} value={c.key}>{c.title}</option>)}
-          </select>
-
-          <select style={selectStyle} value={f.operator} onChange={(e) => updateFilter(i, "operator", e.target.value)}>
-            <option value="contains">contains</option>
-            <option value="equals">equals</option>
-            <option value="startsWith">starts with</option>
-            <option value="gt">greater than</option>
-            <option value="lt">less than</option>
-          </select>
-
-          <input style={inputStyle} placeholder="Value" value={f.value} onChange={(e) => updateFilter(i, "value", e.target.value)} />
-
-          <button style={{ ...smallBtn, background: "#ffecec", marginLeft: 6 }} onClick={() => removeFilter(i)}>✕</button>
-        </div>
-      ))}
     </div>,
     document.getElementById("filter-portal")
   );
