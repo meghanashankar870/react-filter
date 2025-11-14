@@ -1,0 +1,213 @@
+/* container & layout */
+.table-wrapper {
+  padding: 20px;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  color: #222;
+}
+
+.table-container {
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #e6e8eb;
+  box-shadow: 0 1px 0 rgba(32,33,36,0.04);
+  overflow: auto;
+  max-height: 520px;
+}
+
+/* table basics */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+
+/* sticky first column (checkbox) */
+.sticky-col {
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 3;
+  border-right: 1px solid #f2f2f2;
+}
+
+/* head & body cells */
+th, td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef0f2;
+  text-align: left;
+  vertical-align: middle;
+}
+
+/* sticky header */
+thead th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 5;
+}
+
+/* header inner layout */
+.table-header .header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  position: relative;
+  padding-right: 12px; /* space for resizer */
+}
+
+/* left title + sort icons grouped */
+.title-and-icons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* column title */
+.col-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #222;
+}
+
+/* sort icons vertical stack:
+   hidden by default (opacity 0), revealed on th hover via selector below */
+.sort-icons {
+  display: flex;
+  flex-direction: column;
+  line-height: 10px;
+  gap: 2px;
+  margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+/* show sort icons when hovering header */
+.table-header:hover .sort-icons,
+.table-header:focus-within .sort-icons {
+  opacity: 1;
+}
+
+/* arrow styles */
+.arrow {
+  cursor: pointer;
+  font-size: 11px;
+  color: #666;
+  opacity: 0.35; /* faint like MUI */
+  transform-origin: center;
+  transition: opacity 0.12s ease, transform 0.18s ease;
+  display: inline-block;
+  user-select: none;
+}
+
+/* active arrow */
+.arrow.active {
+  opacity: 1;
+  color: #111;
+  font-weight: 700;
+}
+
+/* rotate animation for down/up when active (optional subtle) */
+.arrow.down.active {
+  transform: translateY(0);
+}
+.arrow.up.active {
+  transform: translateY(0);
+}
+
+/* 3-dot menu */
+.menu-container {
+  position: relative;
+  display: inline-block;
+  margin-left: 8px;
+}
+
+.dots {
+  font-size: 16px;
+  cursor: pointer;
+  color: #666;
+  padding: 2px;
+}
+
+.menu-container .dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 22px;
+  right: 0;
+  width: 150px;
+  background: #fff;
+  border: 1px solid #e6e8eb;
+  box-shadow: 0 6px 18px rgba(33,33,33,0.08);
+  border-radius: 8px;
+  z-index: 60;
+  padding: 6px 0;
+}
+
+.menu-container:hover .dropdown-menu,
+.menu-container:focus-within .dropdown-menu {
+  display: block;
+}
+
+.dropdown-menu p {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #222;
+  cursor: pointer;
+}
+
+.dropdown-menu p:hover {
+  background: #f5f7f8;
+}
+
+/* resizer handle on*
+/* 3-dot wrapper */
+.menu-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+/* MUI-like popup box */
+.mui-menu-popup {
+  position: absolute;
+  top: 24px;
+  right: 0;
+  width: 220px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow:
+    0px 3px 5px -1px rgba(0,0,0,0.2),
+    0px 6px 10px 0px rgba(0,0,0,0.14),
+    0px 1px 18px 0px rgba(0,0,0,0.12);
+  z-index: 200;
+  padding: 6px 0;
+}
+
+/* menu items */
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  background: #f5f7f8;
+}
+
+/* icon placeholder */
+.menu-icon {
+  width: 18px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+/* dividers */
+.menu-separator {
+  height: 1px;
+  background: #e8e8e8;
+  margin: 6px 0;
+}
