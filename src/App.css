@@ -211,3 +211,98 @@ thead th {
   background: #e8e8e8;
   margin: 6px 0;
 }
+
+/* =============================== */
+/*        MUI TOOLBAR STYLE        */
+/* =============================== */
+
+.mui-toolbar {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 10px 14px;
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  margin-bottom: 14px;
+}
+
+/* ------------------------- */
+/*      Buttons (MUI)        */
+/* ------------------------- */
+
+.mui-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+/* Filled button */
+.mui-btn-primary {
+  background: #1976d2;
+  color: white;
+}
+.mui-btn-primary:hover {
+  background: #1155a4;
+}
+
+/* Outline button */
+.mui-btn-outline {
+  background: white;
+  border: 1px solid #c5c5c5;
+}
+.mui-btn-outline:hover {
+  background: #f5f5f5;
+}
+
+/* ------------------------- */
+/*       Size Selector        */
+/* ------------------------- */
+
+.mui-select {
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid #c5c5c5;
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.mui-select:hover {
+  border-color: #1976d2;
+}
+
+.mui-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.mui-btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid #d0d0d0;
+}
+
+.mui-btn-primary {
+  background: #2979ff;
+  color: white;
+  border: none;
+}
+
+.mui-btn-outline {
+  background: white;
+}
+
+.mui-select {
+  padding: 8px 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}

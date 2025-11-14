@@ -12,13 +12,11 @@ function App() {
     { id: 5, firstName: "Daenerys", lastName: "Targaryen", age: 28, city: "Dragonstone" },
   ];
 
-  // auto generate fullName
   const dataWithFullName = initialData.map((r) => ({
     ...r,
     fullName: `${r.firstName} ${r.lastName}`,
   }));
 
-  // column definitions (also controls default widths)
   const defaultColumns = [
     { key: "id", title: "ID", width: 70 },
     { key: "firstName", title: "First name", width: 160 },
@@ -32,36 +30,29 @@ function App() {
   const [selected, setSelected] = useState(new Set());
   const [selectAll, setSelectAll] = useState(false);
 
-  // sort config
   const [sortConfig, setSortConfig] = useState({ column: null, direction: null });
-
   const [columnWidths, setColumnWidths] = useState(
     Object.fromEntries(defaultColumns.map((c) => [c.key, c.width]))
   );
 
-  const [filterPosition, setFilterPosition] = useState(null);
   const [filters, setFilters] = useState([]);
   const [filterAnchor, setFilterAnchor] = useState(null);
 
-  // ---------- NEW: hiddenColumns state ----------
-  const [hiddenColumns, setHiddenColumns] = useState([]); // array of column keys hidden
+  const [hiddenColumns, setHiddenColumns] = useState([]);
+  const [manageOpen, setManageOpen] = useState(false);
+
   const hideColumn = (colKey) => {
-    setHiddenColumns((prev) => (prev.includes(colKey) ? prev : [...prev, colKey]));
+    setHiddenColumns((prev) => [...prev, colKey]);
   };
   const showColumn = (colKey) => {
     setHiddenColumns((prev) => prev.filter((k) => k !== colKey));
   };
-
-  // Manage columns panel open state
-  const [manageOpen, setManageOpen] = useState(false);
-
   const toggleColumn = (colKey) => {
     setHiddenColumns((prev) =>
       prev.includes(colKey) ? prev.filter((k) => k !== colKey) : [...prev, colKey]
     );
   };
 
-  // sorting handler
   const handleSort = (column, direction) => {
     setSortConfig((prev) => {
       if (prev.column === column && prev.direction === direction) {
@@ -71,60 +62,58 @@ function App() {
     });
   };
 
-  // comparator (robust)
   const compareValues = (A, B, direction = "asc") => {
     if (A === undefined || A === null) A = "";
     if (B === undefined || B === null) B = "";
     const numA = Number(A);
     const numB = Number(B);
     const bothNumbers = Number.isFinite(numA) && Number.isFinite(numB);
-    if (bothNumbers) return direction === "asc" ? numA - numB : numB - numA;
+
+    if (bothNumbers) {
+      return direction === "asc" ? numA - numB : numB - numA;
+    }
+
     const sA = String(A).trim().toLowerCase();
     const sB = String(B).trim().toLowerCase();
-    const cmp = sA.localeCompare(sB, undefined, { numeric: true, sensitivity: "base" });
+    const cmp = sA.localeCompare(sB);
+
     return direction === "asc" ? cmp : -cmp;
   };
 
-  // processed data (filters then sort)
   const processedData = useMemo(() => {
     let rows = [...data];
 
-    if (Array.isArray(filters) && filters.length > 0) {
-  rows = rows.filter((row) =>
-    filters.every((f) => {
-      const raw = row[f.column];
-      const cell = String(raw ?? "").toLowerCase();
-      const val = String(f.value ?? "").toLowerCase();
+    if (filters.length > 0) {
+      rows = rows.filter((row) =>
+        filters.every((f) => {
+          const raw = row[f.column];
+          const cell = String(raw ?? "").toLowerCase();
+          const val = String(f.value ?? "").toLowerCase();
 
-      // numeric compare if both valid numbers
-      const numCell = Number(raw);
-      const numVal = Number(f.value);
+          const numCell = Number(raw);
+          const numVal = Number(f.value);
 
-      if (!isNaN(numCell) && !isNaN(numVal)) {
-        if (f.operator === "gt") return numCell > numVal;
-        if (f.operator === "lt") return numCell < numVal;
-      }
+          if (!isNaN(numCell) && !isNaN(numVal)) {
+            if (f.operator === "gt") return numCell > numVal;
+            if (f.operator === "lt") return numCell < numVal;
+          }
 
-      // text compares
-      if (f.operator === "contains") return cell.includes(val);
-      if (f.operator === "equals") return cell === val;
-      if (f.operator === "startsWith") return cell.startsWith(val);
+          if (f.operator === "contains") return cell.includes(val);
+          if (f.operator === "equals") return cell === val;
+          if (f.operator === "startsWith") return cell.startsWith(val);
 
-      return true;
-    })
-  );
-}
-
+          return true;
+        })
+      );
+    }
 
     if (sortConfig.column && sortConfig.direction) {
-      const col = sortConfig.column;
-      rows.sort((a, b) => compareValues(a[col], b[col], sortConfig.direction));
+      rows.sort((a, b) => compareValues(a[sortConfig.column], b[sortConfig.column], sortConfig.direction));
     }
 
     return rows;
   }, [data, filters, sortConfig]);
 
-  // selection handlers
   useEffect(() => {
     setSelected(new Set());
     setSelectAll(false);
@@ -135,51 +124,70 @@ function App() {
     if (s.has(id)) s.delete(id);
     else s.add(id);
     setSelected(s);
-    setSelectAll(s.size === processedData.length && processedData.length > 0);
+    setSelectAll(s.size === processedData.length);
   };
 
   const toggleSelectAll = () => {
     if (selectAll) {
       setSelected(new Set());
-      setSelectAll(false);
     } else {
       setSelected(new Set(processedData.map((r) => r.id)));
-      setSelectAll(true);
     }
+    setSelectAll(!selectAll);
   };
 
-  const handleColumnResize = (columnKey, delta) => {
-    setColumnWidths((prev) => {
-      const next = { ...prev };
-      const newWidth = Math.max(40, (next[columnKey] || 80) + delta);
-      next[columnKey] = newWidth;
-      return next;
-    });
-  };
+  const onFiltersChange = (newFilters) => setFilters(newFilters);
 
-  // receive filters
-  const onFiltersChange = (newFilters) => {
-    setFilters(newFilters);
-  };
-
-  // columns to render (exclude hidden)
   const visibleColumns = defaultColumns.filter((c) => !hiddenColumns.includes(c.key));
+
+  // ⭐ Toolbar Logic
+  const resetFiltersAndSort = () => {
+    setFilters([]);
+    setSortConfig({ column: null, direction: null });
+  };
+
+  const showAllColumns = () => setHiddenColumns([]);
+
+  const [tableSize, setTableSize] = useState("medium");
+
+  const sizeStyle =
+    tableSize === "small"
+      ? { fontSize: "12px", padding: "4px" }
+      : tableSize === "large"
+      ? { fontSize: "16px", padding: "14px" }
+      : { fontSize: "14px", padding: "10px" };
 
   return (
     <div className="table-wrapper">
-      <h2 style={{ margin: "10px 0" }}>Custom Data Table (All features)</h2>
-      <div className="table-container">
+      <h2 style={{ margin: "10px 0" }}>Premium Data Table</h2>
+
+      {/* ⭐ MUI Styled Toolbar */}
+      <div className="mui-toolbar">
+        <button className="mui-btn mui-btn-primary" onClick={resetFiltersAndSort}>
+          Reset Filters & Sort
+        </button>
+
+        <button className="mui-btn mui-btn-outline" onClick={showAllColumns}>
+          Show All Columns
+        </button>
+
+        <select
+          value={tableSize}
+          onChange={(e) => setTableSize(e.target.value)}
+          className="mui-select"
+        >
+          <option value="small">Small</option>
+          <option value="medium">Medium</option>
+          <option value="large">Large</option>
+        </select>
+      </div>
+
+      <div className="table-container" style={sizeStyle}>
         <table>
           <thead>
             <tr>
-              {/* checkbox column header */}
               <th style={{ width: 48 }} className="sticky-col">
-                <input
-                  type="checkbox"
-                  checked={selectAll}
-                  onChange={toggleSelectAll}
-                  aria-label="Select all"
-                />
+                <input type="checkbox" checked={selectAll} onChange={toggleSelectAll} />
               </th>
 
               {visibleColumns.map((col) => (
@@ -190,23 +198,19 @@ function App() {
                   width={columnWidths[col.key]}
                   onSort={handleSort}
                   sortConfig={sortConfig}
-                  onResize={handleColumnResize}
-                 onOpenFilter={(columnKey, event) => {
-  const rect = event.currentTarget.getBoundingClientRect();
-
-  setFilterAnchor({
-    left: rect.left,
-    bottom: rect.bottom,
-  });
-
-  setFilters([{ column: columnKey, operator: "contains", value: "" }]);
-}}
-
-
-
-
-                  onHideColumn={(column) => hideColumn(column)}           // <-- wired
-                  onOpenManageColumns={() => setManageOpen(true)}          // <-- wired
+                  onResize={(k, d) =>
+                    setColumnWidths((prev) => ({
+                      ...prev,
+                      [k]: Math.max(40, (prev[k] || 80) + d),
+                    }))
+                  }
+                  onOpenFilter={(columnKey, event) => {
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    setFilterAnchor({ left: rect.left, bottom: rect.bottom });
+                    setFilters([{ column: columnKey, operator: "contains", value: "" }]);
+                  }}
+                  onHideColumn={hideColumn}
+                  onOpenManageColumns={() => setManageOpen(true)}
                 />
               ))}
             </tr>
@@ -214,23 +218,13 @@ function App() {
 
           <tbody>
             {processedData.map((row) => (
-              <tr key={row.id} className="table-row">
+              <tr key={row.id}>
                 <td style={{ width: 48 }} className="sticky-col">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(row.id)}
-                    onChange={() => toggleRowSelect(row.id)}
-                    aria-label={`Select row ${row.id}`}
-                  />
+                  <input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleRowSelect(row.id)} />
                 </td>
 
                 {visibleColumns.map((col) => (
-                  <td
-                    key={col.key}
-                    style={{ width: columnWidths[col.key], maxWidth: columnWidths[col.key] }}
-                  >
-                    {row[col.key]}
-                  </td>
+                  <td key={col.key}>{row[col.key]}</td>
                 ))}
               </tr>
             ))}
@@ -246,42 +240,29 @@ function App() {
         </table>
       </div>
 
-      {/* Filter panel (floating) */}
       <FilterPanel
-  columns={defaultColumns}
-  onChange={onFiltersChange}
-  activeFilters={filters}
-  anchor={filterAnchor}
-  onClose={() => setFilterAnchor(null)}
-/>
+        columns={defaultColumns}
+        onChange={onFiltersChange}
+        activeFilters={filters}
+        anchor={filterAnchor}
+        onClose={() => setFilterAnchor(null)}
+      />
 
-      {/* Manage columns modal/popup */}
       {manageOpen && (
-        <div className="manage-popup" role="dialog" aria-label="Manage Columns">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h4 style={{ margin: 0 }}>Manage columns</h4>
-            <button onClick={() => setManageOpen(false)}>Close</button>
-          </div>
-
-          <div style={{ marginTop: 10 }}>
-            {defaultColumns.map((col) => (
-              <label key={col.key} style={{ display: "flex", alignItems: "center", gap: 8, margin: "6px 0" }}>
-                <input
-                  type="checkbox"
-                  checked={!hiddenColumns.includes(col.key)}
-                  onChange={() => toggleColumn(col.key)}
-                />
-                <span>{col.title}</span>
-                {/* add quick show/hide buttons */}
-                <button
-                  style={{ marginLeft: "auto" }}
-                  onClick={() => (hiddenColumns.includes(col.key) ? showColumn(col.key) : hideColumn(col.key))}
-                >
-                  {hiddenColumns.includes(col.key) ? "Show" : "Hide"}
-                </button>
-              </label>
-            ))}
-          </div>
+        <div className="manage-popup">
+          <h4>Manage Columns</h4>
+          {defaultColumns.map((col) => (
+            <label key={col.key}>
+              <input
+                type="checkbox"
+                checked={!hiddenColumns.includes(col.key)}
+                onChange={() => toggleColumn(col.key)}
+              />
+              {col.title}
+            </label>
+          ))}
+          <br />
+          <button onClick={() => setManageOpen(false)}>Close</button>
         </div>
       )}
 
