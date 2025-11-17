@@ -1,12 +1,23 @@
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 
-export default function FilterPanel({
-  columns = [],
-  anchor,
-  onClose,
-  onChange,
-  activeFilters = []
+/*without destructuring
+function FilterPanel(props) {
+  const columns = props.columns;
+  const anchor = props.anchor;
+  const onClose = props.onClose;
+  const onChange = props.onChange;
+  const activeFilters = props.activeFilters;
+}
+*/
+
+export default function FilterPanel({ 
+  //destructured version
+  columns = [],//If no columns are passed → use empty array
+  anchor,//Position where the popup should appear
+  onClose,//Function to call when filter panel should close
+  onChange,//Function that receives updated filters
+  activeFilters = [] //The currently applied filters (default empty)
 }) {
   // ❗ Render nothing until the user clicks Filter
   if (!anchor) return null;

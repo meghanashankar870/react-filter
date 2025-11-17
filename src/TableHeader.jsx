@@ -1,20 +1,26 @@
 import React, { useEffect, useRef, useState } from "react";
 
 export default function TableHeader({
-  columnKey,
-  title,
-  width,
-  onSort,
-  sortConfig,
-  onResize,
-  onOpenFilter,
-  onHideColumn,         // will be provided by App.jsx
-  onOpenManageColumns,  // will be provided by App.jsx
+  columnKey,//like qge,city
+  title,//column header name shown to user
+  width,//current width of the column
+  onSort,//func to trigger table sorting
+  sortConfig,//current sorting sate from app.jsx
+  onResize,//func for resizing the column width
+  onOpenFilter,//opens the filter panel for this column
+  onHideColumn,//hides this column         // will be provided by App.jsx
+  onOpenManageColumns,//opens column mangt poppup  // will be provided by App.jsx
+  filterAnchor,
+  activeHeader,
+setActiveHeader,
+
 }) {
-  const [localSort, setLocalSort] = useState(null);
+  const [localSort, setLocalSort] = useState(null);//sorting -asc & desc ,null->no sort
   const [menuOpen, setMenuOpen] = useState(false);
 
   const menuRef = useRef(null);
+  const isFilteringNow = filterAnchor?.column === columnKey;
+
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -44,6 +50,7 @@ export default function TableHeader({
   const startDrag = (e) => {
     dragging.current = true;
     startX.current = e.clientX;
+    e.target.classList.add("dragging");
     document.body.style.userSelect = "none";
   };
 
@@ -55,9 +62,15 @@ export default function TableHeader({
       startX.current = e.clientX;
     };
     const onUp = () => {
-      dragging.current = false;
-      document.body.style.userSelect = "";
-    };
+  dragging.current = false;
+  document.body.style.userSelect = "";
+
+  // Remove dragging class from all resizers
+  document.querySelectorAll(".mui-resizer").forEach(el => {
+    el.classList.remove("dragging");
+  });
+};
+
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     return () => {
@@ -67,10 +80,21 @@ export default function TableHeader({
   }, [onResize, columnKey]);
 
   return (
-    <th style={{ width }} className="table-header">
+    <th
+  style={{ width }}
+  className={`table-header ${activeHeader === columnKey ? "active-header" : ""}`}
+  onClick={() => setActiveHeader(columnKey)}
+>
       <div className="header-inner">
         <div className="title-and-icons">
           <span className="col-title">{title}</span>
+          {isFilteringNow && (
+          <span className="filter-active-icon animated-filter">
+          <svg width="18" height="24" viewBox="0 0 24 20">
+          <path d="M3 4h18l-7 8v7l-4 2v-9L3 4z" fill="currentColor" />
+          </svg>
+          </span>
+)}
 
           <div className="sort-icons">
             <span
@@ -139,7 +163,12 @@ export default function TableHeader({
           )}
         </div>
 
-        <div className="resizer" onMouseDown={startDrag}></div>
+        <div
+  className="mui-resizer"
+  onMouseDown={startDrag}
+  onClick={(e) => e.stopPropagation()} // prevent header click
+/>
+
       </div>
     </th>
   );

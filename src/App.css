@@ -396,3 +396,55 @@ thead th {
   color: gray;
   cursor: pointer;
 }
+
+
+
+.animated-filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #777; /* gray color */
+  animation: pulseFilter 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes pulseFilter {
+  from {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+}
+
+.active-header {
+  border: 2px solid #b0b6bb; 
+  border-radius: 4px;
+  background-color: rgba(25, 118, 210, 0.08); /* light blue background */
+}
+
+/* Resizer handle (hidden until hover) */
+.mui-resizer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* Show resizer only when hovering the header */
+.table-header:hover .mui-resizer {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Active dragging line */
+.mui-resizer.dragging {
+  background: #1976d2; /* MUI blue */
+  opacity: 1;
+}

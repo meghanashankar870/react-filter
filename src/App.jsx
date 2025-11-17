@@ -1,22 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+// src/App.jsx
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import TableHeader from "./TableHeader";
 import FilterPanel from "./FilterPanel";
 import "./App.css";
+import { fetchGridData, requestDownloadToken, checkDownloadStatus } from "./services/dataService";
 
 function App() {
-  const initialData = [
-    { id: 1, firstName: "Jon", lastName: "Snow", age: 35, city: "Winterfell" },
-    { id: 2, firstName: "Cersei", lastName: "Lannister", age: 42, city: "Casterly Rock" },
-    { id: 3, firstName: "Jaime", lastName: "Lannister", age: 45, city: "Kings Landing" },
-    { id: 4, firstName: "Arya", lastName: "Stark", age: 16, city: "Winterfell" },
-    { id: 5, firstName: "Daenerys", lastName: "Targaryen", age: 28, city: "Dragonstone" },
-  ];
-
-  const dataWithFullName = initialData.map((r) => ({
-    ...r,
-    fullName: `${r.firstName} ${r.lastName}`,
-  }));
-
   const defaultColumns = [
     { key: "id", title: "ID", width: 70 },
     { key: "firstName", title: "First name", width: 160 },
@@ -26,178 +15,300 @@ function App() {
     { key: "city", title: "City", width: 180 },
   ];
 
-  const [data, setData] = useState(dataWithFullName);
+  // UI / grid state
+  const [allColumns, setAllColumns] = useState(defaultColumns);
+  const [rows, setRows] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [selectAll, setSelectAll] = useState(false);
-
   const [sortConfig, setSortConfig] = useState({ column: null, direction: null });
-  const [columnWidths, setColumnWidths] = useState(
-    Object.fromEntries(defaultColumns.map((c) => [c.key, c.width]))
-  );
-
+  const [columnWidths, setColumnWidths] = useState(Object.fromEntries(defaultColumns.map((c) => [c.key, c.width])));
   const [filters, setFilters] = useState([]);
   const [filterAnchor, setFilterAnchor] = useState(null);
-
   const [hiddenColumns, setHiddenColumns] = useState([]);
   const [manageOpen, setManageOpen] = useState(false);
+  const [activeHeader, setActiveHeader] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const latestRequestRef = useRef(0);
 
-  const hideColumn = (colKey) => {
-    setHiddenColumns((prev) => [...prev, colKey]);
-  };
-  const showColumn = (colKey) => {
-    setHiddenColumns((prev) => prev.filter((k) => k !== colKey));
-  };
-  const toggleColumn = (colKey) => {
-    setHiddenColumns((prev) =>
-      prev.includes(colKey) ? prev.filter((k) => k !== colKey) : [...prev, colKey]
-    );
-  };
+  // paging & server-style queries
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+  const [filterQuery, setFilterQuery] = useState("");
+  const [sortedQuery, setSortedQuery] = useState("");
+  const [rowsLoading, setRowsLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
-  const handleSort = (column, direction) => {
-    setSortConfig((prev) => {
-      if (prev.column === column && prev.direction === direction) {
-        return { column: null, direction: null };
+  useEffect(() => {
+  function handleClickOutside(e) {
+    // if click is outside any .table-header-cell → remove active state
+    if (!e.target.closest(".table-header-cell")) {
+      setActiveHeader(null);
+    }
+  }
+
+  document.addEventListener("mousedown", handleClickOutside);
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
+
+  useEffect(() => {
+    const vis = JSON.parse(localStorage.getItem("Visibility") || "{}");
+    setHiddenColumns([]); // initial
+    
+    const savedSortedQuery = JSON.parse(localStorage.getItem("Sorted Query") || '""');
+    setSortedQuery(savedSortedQuery || "");
+  }, []);
+
+  // Build filterQuery from `filters` array
+  useEffect(() => {
+    if (!filters || filters.length === 0) {
+      setFilterQuery("");
+      localStorage.setItem("Filters", JSON.stringify(""));
+      return;
+    }
+    const q = filters.map(f => `${f.column}=${f.operator}${f.value ? `:${encodeURIComponent(f.value)}` : ""}`).join("&");
+    const queryString = `&${q}`;
+    setFilterQuery(queryString);
+    localStorage.setItem("Filters", JSON.stringify(queryString));
+    setPage(1);
+  }, [filters]);
+
+  // Build sortedQuery from sortConfig
+  useEffect(() => {
+    if (!sortConfig.column || !sortConfig.direction) {
+      setSortedQuery("");
+      localStorage.setItem("Sorted Query", JSON.stringify(""));
+      return;
+    }
+    const q = `&sortBy=${sortConfig.column}&sortOrder=${sortConfig.direction}`;
+    setSortedQuery(q);
+    localStorage.setItem("Sorted Query", JSON.stringify(q));
+    setPage(1);
+  }, [sortConfig]);
+
+  // Fetch data (mock adapter) and then build dynamic columns
+  useEffect(() => {
+    const fetch = async () => {
+      const requestId = ++latestRequestRef.current;
+      setRowsLoading(true);
+      try {
+        const resp = await fetchGridData({ page, pageSize, filterQuery, sortedQuery });
+        if (requestId !== latestRequestRef.current) return;
+        if (resp.status === 200) {
+          const returnedRows = resp.data.data || [];
+          setTotalCount(resp.data.pagination?.totalCount || 0);
+
+          // Build dynamic columns from first row (if any)
+          const built = buildColumnsAndRows(returnedRows);
+          setAllColumns(built.columns);
+          setRows(built.rows);
+        } else {
+          setRows([]);
+          setAllColumns(defaultColumns);
+          setTotalCount(0);
+        }
+      } catch (err) {
+        console.error("Fetch error:", err);
+        setRows([]);
+        setTotalCount(0);
+      } finally {
+        setRowsLoading(false);
+        setLoading(false);
       }
-      return { column, direction };
+    };
+    fetch();
+  }, [page, pageSize, filterQuery, sortedQuery]);
+
+  // Helper: build columns and flattened rows with dynamic fields
+  function buildColumnsAndRows(returnedRows) {
+    if (!returnedRows || returnedRows.length === 0) {
+      return { columns: defaultColumns, rows: [] };
+    }
+
+    // Example: use first row to detect dynamic fields
+    const sample = returnedRows[0];
+
+    // account dynamic fields
+    const accountData =
+      sample.account_id?.dynamicFieldsReport && sample.account_id.dynamicFieldsReport.length > 0
+        ? sample.account_id.dynamicFieldsReport.map((f) => ({ header: `A :${f.fieldName}`, key: f.fieldId, width: 180 }))
+        : [];
+
+    // opportunity dynamic fields
+    const opportunityData =
+      sample.opportunity_id?.dynamicFieldsReport && sample.opportunity_id.dynamicFieldsReport.length > 0
+        ? sample.opportunity_id.dynamicFieldsReport.map((f) => ({ header: `O :${f.fieldName}`, key: f.fieldId, width: 180 }))
+        : [];
+
+    // quote dynamic fields
+    const quoteData =
+      sample.dynamicFieldsReport && sample.dynamicFieldsReport.length > 0
+        ? sample.dynamicFieldsReport.map((f) => ({ header: `Q :${f.fieldName}`, key: f.fieldId, width: 180 }))
+        : [];
+
+    // create column objects for UI
+    const accountCols = accountData.map(c => ({ key: c.key, title: c.header, width: c.width }));
+    const oppCols = opportunityData.map(c => ({ key: c.key, title: c.header, width: c.width }));
+    const qCols = quoteData.map(c => ({ key: c.key, title: c.header, width: c.width }));
+
+    // Merge: default columns first, then account/opportunity/quote dynamic columns
+    const mergedColumns = [...defaultColumns, ...accountCols, ...oppCols, ...qCols];
+
+    // Build flattened rows: take default fields + dynamic fields from nested objects
+    const flatRows = returnedRows.map((r, idx) => {
+      const row = {
+        id: r.id ?? idx + 1,
+        firstName: r.firstName ?? "",
+        lastName: r.lastName ?? "",
+        fullName: r.fullName ?? `${r.firstName ?? ""} ${r.lastName ?? ""}`,
+        age: r.age ?? "",
+        city: r.city ?? "",
+        // keep references for links if needed
+        account_id: r.account_id?._id ?? "",
+        oppo_id: r.opportunity_id?._id ?? "",
+        quotes_id: r.quotes_id ?? r._id ?? "",
+        // you can add more mapped fields here if needed
+      };
+
+      // populate account dynamic fields
+      if (r.account_id?.dynamicFields && accountData.length > 0) {
+        accountData.forEach((c) => {
+          row[c.key] = r.account_id.dynamicFields?.[c.key] ?? "";
+        });
+      }
+
+      // populate opportunity dynamic fields
+      if (r.opportunity_id?.dynamicFields && opportunityData.length > 0) {
+        opportunityData.forEach((c) => {
+          row[c.key] = r.opportunity_id.dynamicFields?.[c.key] ?? "";
+        });
+      }
+
+      // populate quote dynamic fields
+      if (r.dynamicFields && quoteData.length > 0) {
+        quoteData.forEach((c) => {
+          row[c.key] = r.dynamicFields?.[c.key] ?? "";
+        });
+      }
+
+      return row;
     });
-  };
 
-  const compareValues = (A, B, direction = "asc") => {
-    if (A === undefined || A === null) A = "";
-    if (B === undefined || B === null) B = "";
-    const numA = Number(A);
-    const numB = Number(B);
-    const bothNumbers = Number.isFinite(numA) && Number.isFinite(numB);
+    return { columns: mergedColumns, rows: flatRows };
+  }
 
-    if (bothNumbers) {
-      return direction === "asc" ? numA - numB : numB - numA;
-    }
+  // derived visible columns (filter out hidden columns)
+  const visibleColumns = allColumns.filter((c) => !hiddenColumns.includes(c.key));
 
-    const sA = String(A).trim().toLowerCase();
-    const sB = String(B).trim().toLowerCase();
-    const cmp = sA.localeCompare(sB);
-
-    return direction === "asc" ? cmp : -cmp;
-  };
-
-  const processedData = useMemo(() => {
-    let rows = [...data];
-
-    if (filters.length > 0) {
-      rows = rows.filter((row) =>
-        filters.every((f) => {
-          const raw = row[f.column];
-          const cell = String(raw ?? "").toLowerCase();
-          const val = String(f.value ?? "").toLowerCase();
-
-          const numCell = Number(raw);
-          const numVal = Number(f.value);
-
-          if (!isNaN(numCell) && !isNaN(numVal)) {
-            if (f.operator === "gt") return numCell > numVal;
-            if (f.operator === "lt") return numCell < numVal;
-          }
-
-          if (f.operator === "contains") return cell.includes(val);
-          if (f.operator === "does not contains")
-            return !cell.includes(val);
-
-          if (f.operator === "equals") return cell === val;
-          if (f.operator === "does not equal")
-            return cell !== val;
-
-          if (f.operator === "startsWith") return cell.startsWith(val);
-          if (f.operator === "ends with")
-            return cell.endsWith(val);
-
-          if (f.operator === "is empty")
-        return cell.trim() === "";
-
-      if (f.operator === "is not empty")
-        return cell.trim() !== "";
-
-      // ----------------------
-      // MULTIPLE VALUES → “is any of”
-      // value example: "jon, arya, snow"
-      // ----------------------
-      if (f.operator === "is any of") {
-        const list = val.split(",").map((v) => v.trim());
-        return list.includes(cell);
-      }
-          return true;
-        })
-      );
-    }
-
-    if (sortConfig.column && sortConfig.direction) {
-      rows.sort((a, b) => compareValues(a[sortConfig.column], b[sortConfig.column], sortConfig.direction));
-    }
-
-    return rows;
-  }, [data, filters, sortConfig]);
-
+  // selection helpers
   useEffect(() => {
     setSelected(new Set());
     setSelectAll(false);
-  }, [processedData]);
+  }, [rows]);
 
   const toggleRowSelect = (id) => {
     const s = new Set(selected);
     if (s.has(id)) s.delete(id);
     else s.add(id);
     setSelected(s);
-    setSelectAll(s.size === processedData.length);
+    setSelectAll(s.size === rows.length);
   };
 
   const toggleSelectAll = () => {
-    if (selectAll) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(processedData.map((r) => r.id)));
-    }
+    if (selectAll) setSelected(new Set());
+    else setSelected(new Set(rows.map(r => r.id)));
     setSelectAll(!selectAll);
   };
 
-  const onFiltersChange = (newFilters) => setFilters(newFilters);
-
-  const visibleColumns = defaultColumns.filter((c) => !hiddenColumns.includes(c.key));
-
-  // ⭐ Toolbar Logic
-  const resetFiltersAndSort = () => {
-    setFilters([]);
-    setSortConfig({ column: null, direction: null });
+  // Sort handler
+  const handleSort = (columnKey, direction) => {
+    setSortConfig(prev => {
+      if (prev.column === columnKey && prev.direction === direction) {
+        return { column: null, direction: null };
+      }
+      return { column: columnKey, direction };
+    });
   };
 
-  const showAllColumns = () => setHiddenColumns([]);
+  // Filter opener (passes column to FilterPanel via anchor)
+  const openFilterForColumn = (columnKey, event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setFilterAnchor({ left: rect.left, bottom: rect.bottom, column: columnKey });
+    setFilters([{ column: columnKey, operator: "contains", value: "" }]);
+  };
 
+  const onFiltersChange = (newFilters) => {
+    setFilters(newFilters);
+  };
+
+  // Toggle hide column
+  const toggleColumn = (colKey) => {
+    setHiddenColumns(prev => prev.includes(colKey) ? prev.filter(k => k !== colKey) : [...prev, colKey]);
+  };
+
+  // Column resize handler
+  const onColumnResize = (k, delta) => {
+    setColumnWidths(prev => ({ ...prev, [k]: Math.max(40, (prev[k] || 80) + delta) }));
+  };
+
+  // Download flow (mock)
+  const handleDownload = async () => {
+    if (rows.length === 0) {
+      alert("Empty report cannot be downloaded");
+      return;
+    }
+    setDownloading(true);
+    const defaultCols = allColumns.map(c => ({ header: c.title, key: c.key, width: c.width || 30 }));
+    try {
+      const tokenResp = await requestDownloadToken({ allColumns: defaultCols, filterQuery, sortedQuery });
+      if (tokenResp?.data?.token) {
+        const token = tokenResp.data.token;
+        const interval = setInterval(async () => {
+          const status = await checkDownloadStatus(token);
+          if (status.status === 200) {
+            clearInterval(interval);
+            setDownloading(false);
+            const fileURL = status.data.fileURL;
+            const link = document.createElement("a");
+            link.href = fileURL;
+            link.download = "report.xlsx";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          } else if (status.status === 202) {
+            setDownloading(true);
+          }
+        }, 1000);
+      }
+    } catch (err) {
+      console.error(err);
+      setDownloading(false);
+    }
+  };
+
+  // UI size control
   const [tableSize, setTableSize] = useState("medium");
-
-  const sizeStyle =
-    tableSize === "small"
-      ? { fontSize: "12px", padding: "4px" }
-      : tableSize === "large"
-      ? { fontSize: "16px", padding: "14px" }
-      : { fontSize: "14px", padding: "10px" };
+  const sizeStyle = tableSize === "small" ? { fontSize: "12px", padding: "4px" } :
+                    tableSize === "large" ? { fontSize: "16px", padding: "14px" } :
+                    { fontSize: "14px", padding: "10px" };
 
   return (
     <div className="table-wrapper">
-      <h2 style={{ margin: "10px 0" }}>Premium Data Table</h2>
+      <h2 style={{ margin: "10px 0" }}>DataGrid Table</h2>
 
-      {/* ⭐ MUI Styled Toolbar */}
       <div className="mui-toolbar">
-        <button className="mui-btn mui-btn-primary" onClick={resetFiltersAndSort}>
+        <button className="mui-btn mui-btn-primary" onClick={() => { setFilters([]); setSortConfig({column:null,direction:null}); setHiddenColumns([]); setPage(1); }}>
           Reset Filters & Sort
         </button>
 
-        <button className="mui-btn mui-btn-outline" onClick={showAllColumns}>
+        <button className="mui-btn mui-btn-outline" onClick={() => setHiddenColumns([])}>
           Show All Columns
         </button>
 
-        <select
-          value={tableSize}
-          onChange={(e) => setTableSize(e.target.value)}
-          className="mui-select"
-        >
+        <select value={tableSize} onChange={(e) => setTableSize(e.target.value)} className="mui-select">
           <option value="small">Small</option>
           <option value="medium">Medium</option>
           <option value="large">Large</option>
@@ -211,7 +322,6 @@ function App() {
               <th style={{ width: 48 }} className="sticky-col">
                 <input type="checkbox" checked={selectAll} onChange={toggleSelectAll} />
               </th>
-
               {visibleColumns.map((col) => (
                 <TableHeader
                   key={col.key}
@@ -219,39 +329,34 @@ function App() {
                   title={col.title}
                   width={columnWidths[col.key]}
                   onSort={handleSort}
-                  sortConfig={sortConfig}
-                  onResize={(k, d) =>
-                    setColumnWidths((prev) => ({
-                      ...prev,
-                      [k]: Math.max(40, (prev[k] || 80) + d),
-                    }))
-                  }
-                  onOpenFilter={(columnKey, event) => {
-                    const rect = event.currentTarget.getBoundingClientRect();
-                    setFilterAnchor({ left: rect.left, bottom: rect.bottom });
-                    setFilters([{ column: columnKey, operator: "contains", value: "" }]);
-                  }}
-                  onHideColumn={hideColumn}
+                  sortConfig={{ column: sortConfig.column, direction: sortConfig.direction }}
+                  onResize={onColumnResize}
+                  onOpenFilter={openFilterForColumn}
+                  onHideColumn={() => toggleColumn(col.key)}
                   onOpenManageColumns={() => setManageOpen(true)}
+                  filterAnchor={filterAnchor}
+                  activeHeader={activeHeader}
+                  setActiveHeader={setActiveHeader}
                 />
               ))}
             </tr>
           </thead>
 
           <tbody>
-            {processedData.map((row) => (
-              <tr key={row.id}>
-                <td style={{ width: 48 }} className="sticky-col">
-                  <input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleRowSelect(row.id)} />
-                </td>
-
-                {visibleColumns.map((col) => (
-                  <td key={col.key}>{row[col.key]}</td>
-                ))}
-              </tr>
-            ))}
-
-            {processedData.length === 0 && (
+            {rowsLoading ? (
+              <tr><td colSpan={visibleColumns.length + 1} style={{ padding: 24, textAlign: "center" }}>Loading...</td></tr>
+            ) : rows.length > 0 ? (
+              rows.map((row) => (
+                <tr key={row.id || row._id}>
+                  <td style={{ width: 48 }} className="sticky-col">
+                    <input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleRowSelect(row.id)} />
+                  </td>
+                  {visibleColumns.map((col) => (
+                    <td key={col.key}>{row[col.key]}</td>
+                  ))}
+                </tr>
+              ))
+            ) : (
               <tr>
                 <td colSpan={visibleColumns.length + 1} style={{ padding: 24, textAlign: "center" }}>
                   No results found
@@ -263,7 +368,7 @@ function App() {
       </div>
 
       <FilterPanel
-        columns={defaultColumns}
+        columns={allColumns}
         onChange={onFiltersChange}
         activeFilters={filters}
         anchor={filterAnchor}
@@ -271,73 +376,64 @@ function App() {
       />
 
       {manageOpen && (
-  <div className="manage-columns-overlay">
-    <div className="manage-columns-box">
-      
-      {/* Header */}
-      <div className="mc-header">
-        <strong>Manage Columns</strong>
-        <button className="mc-close" onClick={() => setManageOpen(false)}>✕</button>
-      </div>
-
-      {/* Search box */}
-      <input
-        type="text"
-        placeholder="Search columns..."
-        className="mc-search"
-        onChange={(e) => {
-          const v = e.target.value.toLowerCase();
-          document.querySelectorAll(".mc-item").forEach((el) => {
-            const name = el.dataset.label.toLowerCase();
-            el.style.display = name.includes(v) ? "flex" : "none";
-          });
-        }}
-      />
-
-      {/* Column List */}
-      <div className="mc-list">
-        {defaultColumns.map((col) => (
-          <div
-            key={col.key}
-            className="mc-item"
-            data-label={col.title}
-          >
+        <div className="manage-columns-overlay">
+          <div className="manage-columns-box">
+            <div className="mc-header">
+              <strong>Manage Columns</strong>
+              <button className="mc-close" onClick={() => setManageOpen(false)}>✕</button>
+            </div>
             <input
-              type="checkbox"
-              checked={!hiddenColumns.includes(col.key)}
-              onChange={() => toggleColumn(col.key)}
+              type="text"
+              placeholder="Search columns..."
+              className="mc-search"
+              onChange={(e) => {
+                const v = e.target.value.toLowerCase();
+                document.querySelectorAll(".mc-item").forEach((el) => {
+                  const name = el.dataset.label.toLowerCase();
+                  el.style.display = name.includes(v) ? "flex" : "none";
+                });
+              }}
             />
-            <span>{col.title}</span>
+            <div className="mc-list">
+              {allColumns.map((col) => (
+                <div key={col.key} className="mc-item" data-label={col.title}>
+                  <input type="checkbox" checked={!hiddenColumns.includes(col.key)} onChange={() => toggleColumn(col.key)} />
+                  <span>{col.title}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mc-footer">
+              <button className="mc-footer-btn" onClick={() => setHiddenColumns([])}>Show/Hide All</button>
+              <button className="mc-reset" onClick={() => { setHiddenColumns([]); setManageOpen(false); }}>RESET</button>
+            </div>
           </div>
-        ))}
-      </div>
-
-      {/* Footer Bottom */}
-      <div className="mc-footer">
-        <button
-          className="mc-footer-btn"
-          onClick={() => setHiddenColumns([])}
-        >
-          Show/Hide All
-        </button>
-
-        <button
-          className="mc-reset"
-          onClick={() => {
-            setHiddenColumns([]);
-            setManageOpen(false);
-          }}
-        >
-          RESET
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
+        </div>
+      )}
 
       <div style={{ marginTop: 12 }}>
         <strong>Selected IDs:</strong> {[...selected].join(", ") || "—"}
+      </div>
+
+      <div style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <button disabled={page === 1} onClick={() => setPage(1)} className="mui-btn">First</button>
+          <button disabled={page === 1} onClick={() => setPage(prev => Math.max(prev - 1, 1))} className="mui-btn">Prev</button>
+          <span style={{ margin: "0 12px" }}>Page {page} of {Math.max(1, Math.ceil(totalCount / pageSize))}</span>
+          <button disabled={page * pageSize >= totalCount} onClick={() => setPage(prev => prev + 1)} className="mui-btn">Next</button>
+          <button disabled={page * pageSize >= totalCount} onClick={() => setPage(Math.max(1, Math.ceil(totalCount / pageSize)))} className="mui-btn">Last</button>
+        </div>
+
+        <div>
+          <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="mui-select">
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+
+          <button className="mui-btn mui-btn-primary" onClick={handleDownload} disabled={downloading} style={{ marginLeft: 8 }}>
+            {downloading ? "Downloading..." : "Download"}
+          </button>
+        </div>
       </div>
     </div>
   );
