@@ -1,4 +1,4 @@
-// src/App.jsx
+// src/App.jsx — PART 1 (imports and App() top until before return)
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import TableHeader from "./TableHeader";
 import FilterPanel from "./FilterPanel";
@@ -16,10 +16,10 @@ function App() {
   ];
 
   const ROW_HEIGHTS = {
-  small: 28,
-  medium: 40,
-  large: 54,
-};
+    small: 28,
+    medium: 40,
+    large: 54,
+  };
 
   // UI / grid state
   const [allColumns, setAllColumns] = useState(defaultColumns);
@@ -36,7 +36,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const latestRequestRef = useRef(0);
 
-    const [pinned, setPinned] = useState({
+  // pinned columns state (left/right)
+  const [pinned, setPinned] = useState({
     left: [],
     right: [],
   });
@@ -51,24 +52,24 @@ function App() {
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
-  function handleClickOutside(e) {
-    // if click is outside any .table-header-cell → remove active state
-    if (!e.target.closest(".table-header-cell")) {
-      setActiveHeader(null);
+    function handleClickOutside(e) {
+      // if click is outside any .table-header-cell → remove active state
+      if (!e.target.closest(".table-header-cell")) {
+        setActiveHeader(null);
+      }
     }
-  }
 
-  document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
 
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, []);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     const vis = JSON.parse(localStorage.getItem("Visibility") || "{}");
     setHiddenColumns([]); // initial
-    
+
     const savedSortedQuery = JSON.parse(localStorage.getItem("Sorted Query") || '""');
     setSortedQuery(savedSortedQuery || "");
   }, []);
@@ -246,16 +247,16 @@ function App() {
 
   // Filter opener (passes column to FilterPanel via anchor)
   const openFilterForColumn = (columnKey, headerCell) => {
-  const rect = headerCell.getBoundingClientRect();
+    const rect = headerCell.getBoundingClientRect();
 
-  setFilterAnchor({
-    left: rect.left + rect.width / 2,   // center of header
-    top: rect.bottom,                   // always below header
-    column: columnKey
-  });
+    setFilterAnchor({
+      left: rect.left + rect.width / 2,   // center of header
+      top: rect.bottom,                   // always below header
+      column: columnKey
+    });
 
-  setFilters([{ column: columnKey, operator: "contains", value: "" }]);
-};
+    setFilters([{ column: columnKey, operator: "contains", value: "" }]);
+  };
 
 
   const onFiltersChange = (newFilters) => {
@@ -267,7 +268,7 @@ function App() {
     setHiddenColumns(prev => prev.includes(colKey) ? prev.filter(k => k !== colKey) : [...prev, colKey]);
   };
 
-    const onPinColumn = (key, side) => {
+  const onPinColumn = (key, side) => {
     setPinned(prev => {
       let left = [...prev.left];
       let right = [...prev.right];
@@ -283,6 +284,27 @@ function App() {
     });
   };
 
+  // compute total left/right offset (in px) for a pinned column so pinned columns don't overlap
+  const calcPinnedOffset = (key, side) => {
+    const group = side === "left" ? pinned.left : pinned.right;
+    const index = group.indexOf(key);
+    if (index === -1) return undefined;
+
+    // sum widths of earlier pinned columns in the same side
+    let offset = 0;
+    for (let i = 0; i < index; i++) {
+      const k = group[i];
+      offset += (columnWidths[k] ?? 120); // fallback width
+    }
+
+    // account for the sticky checkbox column on the very left (width = 48 in your code)
+    if (side === "left") {
+      // if there is at least one pinned-left column, it should sit after the sticky checkbox column (48px)
+      offset += 48;
+    }
+
+    return offset;
+  };
 
   // Column resize handler
   const onColumnResize = (k, delta) => {
@@ -330,6 +352,7 @@ function App() {
                     tableSize === "large" ? { fontSize: "16px", padding: "14px" } :
                     { fontSize: "14px", padding: "10px" };
 
+                    // src/App.jsx — PART 2 (the return JSX and export)
   return (
     <div className="table-wrapper">
       <h2 style={{ margin: "10px 0" }}>DataGrid Table</h2>
@@ -372,12 +395,12 @@ function App() {
                   filterAnchor={filterAnchor}
                   activeHeader={activeHeader}
                   setActiveHeader={setActiveHeader}
-                   size={tableSize}
+                  size={tableSize}
                   rowHeight={ROW_HEIGHTS[tableSize]}
-                      onPinColumn={onPinColumn}
-    pinned={pinned}
-    columnWidths={columnWidths}
-
+                  onPinColumn={onPinColumn}
+                  pinned={pinned}
+                  columnWidths={columnWidths}
+                  calcPinnedOffset={calcPinnedOffset}
                 />
               ))}
             </tr>
@@ -392,9 +415,29 @@ function App() {
                   <td style={{ width: 48 }} className="sticky-col">
                     <input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleRowSelect(row.id)} />
                   </td>
-                  {visibleColumns.map((col) => (
-                    <td key={col.key}>{row[col.key]}</td>
-                  ))}
+                  {visibleColumns.map((col) => {
+                    const key = col.key;
+                    const isPinnedLeft = pinned.left.includes(key);
+                    const isPinnedRight = pinned.right.includes(key);
+
+                    const leftOffset = isPinnedLeft ? calcPinnedOffset(key, "left") : undefined;
+                    const rightOffset = isPinnedRight ? calcPinnedOffset(key, "right") : undefined;
+
+                    return (
+                      <td
+                        key={key}
+                        className={`${isPinnedLeft ? "pinned-left" : ""} ${isPinnedRight ? "pinned-right" : ""}`}
+                        style={{
+                          left: leftOffset !== undefined ? `${leftOffset}px` : undefined,
+                          right: rightOffset !== undefined ? `${rightOffset}px` : undefined,
+                          position: (isPinnedLeft || isPinnedRight) ? "sticky" : undefined,
+                          zIndex: (isPinnedLeft || isPinnedRight) ? 900 : undefined,
+                        }}
+                      >
+                        {row[key]}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))
             ) : (

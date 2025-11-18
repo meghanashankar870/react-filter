@@ -1,3 +1,4 @@
+// src/TableHeader.jsx (full file)
 import React, { useEffect, useRef, useState } from "react";
 
 export default function TableHeader({
@@ -12,11 +13,11 @@ export default function TableHeader({
   onOpenManageColumns,//opens column mangt poppup  // will be provided by App.jsx
   filterAnchor,
   activeHeader,
-setActiveHeader,
-pinned,
+  setActiveHeader,
+  pinned,
   onPinColumn,
-  columnWidths
-
+  columnWidths,
+  calcPinnedOffset
 }) {
   const [localSort, setLocalSort] = useState(null);//sorting -asc & desc ,null->no sort
   const [menuOpen, setMenuOpen] = useState(false);
@@ -65,14 +66,14 @@ pinned,
       startX.current = e.clientX;
     };
     const onUp = () => {
-  dragging.current = false;
-  document.body.style.userSelect = "";
+      dragging.current = false;
+      document.body.style.userSelect = "";
 
-  // Remove dragging class from all resizers
-  document.querySelectorAll(".mui-resizer").forEach(el => {
-    el.classList.remove("dragging");
-  });
-};
+      // Remove dragging class from all resizers
+      document.querySelectorAll(".mui-resizer").forEach(el => {
+        el.classList.remove("dragging");
+      });
+    };
 
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
@@ -82,25 +83,35 @@ pinned,
     };
   }, [onResize, columnKey]);
 
+  // compute inline offsets for this header
+  const pinnedLeftOffset = pinned?.left?.includes(columnKey) ? calcPinnedOffset?.(columnKey, "left") : undefined;
+  const pinnedRightOffset = pinned?.right?.includes(columnKey) ? calcPinnedOffset?.(columnKey, "right") : undefined;
+
   return (
     <th
-  style={{ width }}
-  className={`table-header 
-    ${activeHeader === columnKey ? "active-header" : ""}
-    ${pinned?.left?.includes(columnKey) ? "pinned-left" : ""} 
-  ${pinned?.right?.includes(columnKey) ? "pinned-right" : ""}`}
-  onClick={() => setActiveHeader(columnKey)}
->
+      style={{
+        width,
+        left: pinnedLeftOffset !== undefined ? `${pinnedLeftOffset}px` : undefined,
+        right: pinnedRightOffset !== undefined ? `${pinnedRightOffset}px` : undefined,
+        position: (pinnedLeftOffset !== undefined || pinnedRightOffset !== undefined) ? "sticky" : undefined,
+        zIndex: (pinnedLeftOffset !== undefined || pinnedRightOffset !== undefined) ? 900 : undefined,
+      }}
+      className={`table-header 
+        ${activeHeader === columnKey ? "active-header" : ""}
+        ${pinned?.left?.includes(columnKey) ? "pinned-left" : ""} 
+        ${pinned?.right?.includes(columnKey) ? "pinned-right" : ""}`}
+      onClick={() => setActiveHeader(columnKey)}
+    >
       <div className={`header-inner ${activeHeader === columnKey ? "active-header" : ""}`}>
         <div className="title-and-icons">
           <span className="col-title">{title}</span>
           {isFilteringNow && (
-          <span className="filter-active-icon animated-filter">
-          <svg width="18" height="24" viewBox="0 0 24 20">
-          <path d="M3 4h18l-7 8v7l-4 2v-9L3 4z" fill="currentColor" />
-          </svg>
-          </span>
-)}
+            <span className="filter-active-icon animated-filter">
+              <svg width="18" height="24" viewBox="0 0 24 20">
+                <path d="M3 4h18l-7 8v7l-4 2v-9L3 4z" fill="currentColor" />
+              </svg>
+            </span>
+          )}
 
           <div className="sort-icons">
             <span
@@ -142,12 +153,12 @@ pinned,
 
               {/* Pass the columnKey to onOpenFilter */}
               <div
-  className="menu-item"
-  onClick={(e) => {
-    const headerCell = e.currentTarget.closest("th");
-    onOpenFilter(columnKey, headerCell);
-  }}
->
+                className="menu-item"
+                onClick={(e) => {
+                  const headerCell = e.currentTarget.closest("th");
+                  onOpenFilter(columnKey, headerCell);
+                }}
+              >
                 <svg className="menu-icon" viewBox="0 0 24 24" height="18" width="18">
                   <path d="M10 18h4v-2h-4v2zM3 10v2h18v-2H3zm3-6v2h12V4H6z"/>
                 </svg>
@@ -164,20 +175,20 @@ pinned,
               </div>
 
               <div className="menu-item" onClick={() => onPinColumn(columnKey, "right")}>
-              <svg className="menu-icon" viewBox="0 0 24 24" height="18" width="18">
-              <path d="M9 4v2h1v5l-3 3v2h10v-2l-3-3V6h1V4H9zM17 4h2v16h-2V4z"/>
-              </svg>
-              <span>Pin Right</span>
+                <svg className="menu-icon" viewBox="0 0 24 24" height="18" width="18">
+                <path d="M9 4v2h1v5l-3 3v2h10v-2l-3-3V6h1V4H9zM17 4h2v16h-2V4z"/>
+                </svg>
+                <span>Pin Right</span>
               </div>
 
               <div className="menu-item" onClick={() => onPinColumn(columnKey, "none")}>
-              <svg className="menu-icon" viewBox="0 0 24 24" height="18" width="18">
-              <path d="M3 3l18 18-1.41 1.41-6.59-6.59V21h-2v-5.17L6.41 20.41 5 19l6-6V6h1.17L3 3z"/>
-              </svg>
-              <span>Unpin</span>
+                <svg className="menu-icon" viewBox="0 0 24 24" height="18" width="18">
+                <path d="M3 3l18 18-1.41 1.41-6.59-6.59V21h-2v-5.17L6.41 20.41 5 19l6-6V6h1.17L3 3z"/>
+                </svg>
+                <span>Unpin</span>
               </div>
 
- {/* CALL app's onHideColumn */}
+              {/* CALL app's onHideColumn */}
               <div className="menu-item" onClick={() => onHideColumn && onHideColumn(columnKey)}>
                 <svg className="menu-icon" viewBox="0 0 24 24" height="18" width="18">
                   <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l3.92 3.92-1.41 1.41-3.92-3.92A4.97 4.97 0 0 1 12 17a5 5 0 1 1 0-10zm0-2C7 5 2.73 8.11 1 12c.61 1.43 1.53 2.74 2.69 3.84l-1.42 1.42C.98 15.87 0 14.02 0 12c2-4.42 6.58-8 12-8 2.02 0 3.87.98 5.26 2.27l-1.42 1.42A9.948 9.948 0 0 0 12 5z"/>
@@ -197,10 +208,10 @@ pinned,
         </div>
 
         <div
-  className="mui-resizer"
-  onMouseDown={startDrag}
-  onClick={(e) => e.stopPropagation()} // prevent header click
-/>
+          className="mui-resizer"
+          onMouseDown={startDrag}
+          onClick={(e) => e.stopPropagation()} // prevent header click
+        />
 
       </div>
     </th>
