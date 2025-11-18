@@ -13,6 +13,9 @@ export default function TableHeader({
   filterAnchor,
   activeHeader,
 setActiveHeader,
+pinned,
+  onPinColumn,
+  columnWidths
 
 }) {
   const [localSort, setLocalSort] = useState(null);//sorting -asc & desc ,null->no sort
@@ -82,10 +85,13 @@ setActiveHeader,
   return (
     <th
   style={{ width }}
-  className={`table-header ${activeHeader === columnKey ? "active-header" : ""}`}
+  className={`table-header 
+    ${activeHeader === columnKey ? "active-header" : ""}
+    ${pinned?.left?.includes(columnKey) ? "pinned-left" : ""} 
+  ${pinned?.right?.includes(columnKey) ? "pinned-right" : ""}`}
   onClick={() => setActiveHeader(columnKey)}
 >
-      <div className="header-inner">
+      <div className={`header-inner ${activeHeader === columnKey ? "active-header" : ""}`}>
         <div className="title-and-icons">
           <span className="col-title">{title}</span>
           {isFilteringNow && (
@@ -150,7 +156,28 @@ setActiveHeader,
 
               <div className="menu-separator"></div>
 
-              {/* CALL app's onHideColumn */}
+              <div className="menu-item" onClick={() => onPinColumn(columnKey, "left")}>
+                <svg className="menu-icon" viewBox="0 0 24 24" height="18" width="18">
+                <path d="M15 4v2h-1v5l3 3v2H7v-2l3-3V6H9V4h6zM5 4h2v16H5V4z"/>
+                </svg>
+                <span>Pin Left</span>
+              </div>
+
+              <div className="menu-item" onClick={() => onPinColumn(columnKey, "right")}>
+              <svg className="menu-icon" viewBox="0 0 24 24" height="18" width="18">
+              <path d="M9 4v2h1v5l-3 3v2h10v-2l-3-3V6h1V4H9zM17 4h2v16h-2V4z"/>
+              </svg>
+              <span>Pin Right</span>
+              </div>
+
+              <div className="menu-item" onClick={() => onPinColumn(columnKey, "none")}>
+              <svg className="menu-icon" viewBox="0 0 24 24" height="18" width="18">
+              <path d="M3 3l18 18-1.41 1.41-6.59-6.59V21h-2v-5.17L6.41 20.41 5 19l6-6V6h1.17L3 3z"/>
+              </svg>
+              <span>Unpin</span>
+              </div>
+
+ {/* CALL app's onHideColumn */}
               <div className="menu-item" onClick={() => onHideColumn && onHideColumn(columnKey)}>
                 <svg className="menu-icon" viewBox="0 0 24 24" height="18" width="18">
                   <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l3.92 3.92-1.41 1.41-3.92-3.92A4.97 4.97 0 0 1 12 17a5 5 0 1 1 0-10zm0-2C7 5 2.73 8.11 1 12c.61 1.43 1.53 2.74 2.69 3.84l-1.42 1.42C.98 15.87 0 14.02 0 12c2-4.42 6.58-8 12-8 2.02 0 3.87.98 5.26 2.27l-1.42 1.42A9.948 9.948 0 0 0 12 5z"/>

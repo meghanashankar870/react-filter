@@ -36,6 +36,11 @@ function App() {
   const [loading, setLoading] = useState(true);
   const latestRequestRef = useRef(0);
 
+    const [pinned, setPinned] = useState({
+    left: [],
+    right: [],
+  });
+
   // paging & server-style queries
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -262,6 +267,23 @@ function App() {
     setHiddenColumns(prev => prev.includes(colKey) ? prev.filter(k => k !== colKey) : [...prev, colKey]);
   };
 
+    const onPinColumn = (key, side) => {
+    setPinned(prev => {
+      let left = [...prev.left];
+      let right = [...prev.right];
+
+      // Remove from both sides first
+      left = left.filter(k => k !== key);
+      right = right.filter(k => k !== key);
+
+      if (side === "left") left.push(key);
+      if (side === "right") right.push(key);
+
+      return { left, right };
+    });
+  };
+
+
   // Column resize handler
   const onColumnResize = (k, delta) => {
     setColumnWidths(prev => ({ ...prev, [k]: Math.max(40, (prev[k] || 80) + delta) }));
@@ -352,6 +374,10 @@ function App() {
                   setActiveHeader={setActiveHeader}
                    size={tableSize}
                   rowHeight={ROW_HEIGHTS[tableSize]}
+                      onPinColumn={onPinColumn}
+    pinned={pinned}
+    columnWidths={columnWidths}
+
                 />
               ))}
             </tr>
