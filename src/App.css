@@ -11,7 +11,9 @@
   border: 1px solid #e6e8eb;
   box-shadow: 0 1px 0 rgba(32,33,36,0.04);
   overflow: auto;
-  max-height: 520px;
+  position:relative;
+  max-height: 600px;
+  padding:0 !important;
 }
 
 /* table basics */
@@ -26,9 +28,27 @@ table {
   position: sticky;
   left: 0;
   background: #fff;
-  z-index: 3;
+  z-index: 50;
   border-right: 1px solid #f2f2f2;
 }
+
+/* Header first column */
+thead .sticky-col {
+  position: sticky;
+  left: 0;
+  top: 0;        /* <-- THIS FIXES IT */
+  z-index: 1000; /* MUST be higher than body cells */
+  background: white;
+}
+
+/* Body first column */
+tbody .sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 500;
+  background: white;
+}
+
 
 /* head & body cells */
 th, td {
@@ -43,7 +63,7 @@ thead th {
   position: sticky;
   top: 0;
   background: #fff;
-  z-index: 5;
+  z-index: 100;
 }
 
 /* header inner layout */

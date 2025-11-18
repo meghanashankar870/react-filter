@@ -315,8 +315,8 @@ function App() {
         </select>
       </div>
 
-      <div className="table-container" style={sizeStyle}>
-        <table>
+      <div className="table-container">
+        <table style={sizeStyle}>
           <thead>
             <tr>
               <th style={{ width: 48 }} className="sticky-col">
