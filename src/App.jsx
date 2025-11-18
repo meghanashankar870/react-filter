@@ -240,11 +240,18 @@ function App() {
   };
 
   // Filter opener (passes column to FilterPanel via anchor)
-  const openFilterForColumn = (columnKey, event) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    setFilterAnchor({ left: rect.left, bottom: rect.bottom, column: columnKey });
-    setFilters([{ column: columnKey, operator: "contains", value: "" }]);
-  };
+  const openFilterForColumn = (columnKey, headerCell) => {
+  const rect = headerCell.getBoundingClientRect();
+
+  setFilterAnchor({
+    left: rect.left + rect.width / 2,   // center of header
+    top: rect.bottom,                   // always below header
+    column: columnKey
+  });
+
+  setFilters([{ column: columnKey, operator: "contains", value: "" }]);
+};
+
 
   const onFiltersChange = (newFilters) => {
     setFilters(newFilters);

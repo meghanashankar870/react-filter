@@ -68,17 +68,21 @@ const top = anchor.bottom + 8;
   };
 
   const rowStyle = {
-    display: "flex",
-    alignItems: "center",
-    gap: 12
-  };
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  width: "100%",
+  flexWrap: "nowrap",
+  overflow: "hidden"
+};
+
 
   const selectStyle = {
     padding: "10px",
     borderRadius: 6,
     border: "1px solid #ccc",
     fontSize: 14,
-    flex: 1,
+    flex: "0 0 140px",   // fixed width, no overflow
     background: "#fff"
   };
 
@@ -87,7 +91,8 @@ const top = anchor.bottom + 8;
     borderRadius: 6,
     border: "1px solid #ccc",
     fontSize: 14,
-    flex: 1
+    flex: "1 1 auto",// takes remaining space
+  minWidth: 0          // IMPORTANT: prevents overflow
   };
 
   const closeBtnStyle = {
