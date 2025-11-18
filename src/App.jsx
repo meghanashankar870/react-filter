@@ -15,6 +15,12 @@ function App() {
     { key: "city", title: "City", width: 180 },
   ];
 
+  const ROW_HEIGHTS = {
+  small: 28,
+  medium: 40,
+  large: 54,
+};
+
   // UI / grid state
   const [allColumns, setAllColumns] = useState(defaultColumns);
   const [rows, setRows] = useState([]);
@@ -337,6 +343,8 @@ function App() {
                   filterAnchor={filterAnchor}
                   activeHeader={activeHeader}
                   setActiveHeader={setActiveHeader}
+                   size={tableSize}
+                  rowHeight={ROW_HEIGHTS[tableSize]}
                 />
               ))}
             </tr>

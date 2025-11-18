@@ -34,13 +34,25 @@ export default function FilterPanel({
   }, [filter, onChange]);
 
   // popup positioning
-  const popupWidth = 520;
-  const left = Math.max(
-    8,
-    Math.min(anchor.left - 60, window.innerWidth - popupWidth - 8)
-  );
+  // ----- FIX FILTER PANEL POSITION -----
 
-  const top = anchor.bottom - 80;
+const popupWidth = 520;
+const popupHeight = 80; // approx height of filter row
+
+// Get right edge of popup based on anchor
+let left = anchor.left - popupWidth / 2 + 40;
+
+// Ensure popup stays inside screen (left boundary)
+if (left < 8) left = 8;
+
+// Ensure popup doesn't overflow right side
+if (left + popupWidth > window.innerWidth - 8) {
+  left = window.innerWidth - popupWidth - 8;
+}
+
+// Always show BELOW the column header
+const top = anchor.bottom + 8;
+
 
   const popupStyle = {
     position: "fixed",

@@ -468,3 +468,8 @@ thead th {
   background: #1976d2; /* MUI blue */
   opacity: 1;
 }
+
+.table-header .col-title {
+  font-size: 18px !important;   /* increase as you like */
+  font-weight: 500;
+}
